@@ -37,6 +37,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -65,14 +69,16 @@ fun TecnicoScreen(vm: TecnicoViewModel, usuario: Usuario, alSalir: () -> Unit) {
     val historial by vm.historial.collectAsState()
     val pendientes by vm.pendientesSync.collectAsState()
     val mensaje by vm.mensaje.collectAsState()
+    val sincronizando by vm.sincronizando.collectAsState()
+    val cargando by vm.cargando.collectAsState()
 
     var tab by remember { mutableIntStateOf(0) }
     val snack = remember { SnackbarHostState() }
-    var mostrarInicio by remember { mutableStateOf(false) }
+    var mostrarInicio by remember { mutableStateOf(value = false) }
     var visitaElegida by remember { mutableStateOf<Visita?>(null) }
-    var mostrarParada by remember { mutableStateOf(false) }
+    var mostrarParada by remember { mutableStateOf(value = false) }
     var consentimientoOk by remember { mutableStateOf(vm.consentimientoRespondido()) }
-    var obteniendoUbicacion by remember { mutableStateOf(false) }
+    var obteniendoUbicacion by remember { mutableStateOf(value = false) }
 
     LaunchedEffect(mensaje) {
         mensaje?.let {
@@ -117,15 +123,15 @@ fun TecnicoScreen(vm: TecnicoViewModel, usuario: Usuario, alSalir: () -> Unit) {
                 Text(
                     "TeqRuta registra tu ubicación solo dos veces por traslado: al iniciarlo y al finalizarlo. " +
                         "No te sigue de forma continua. Se usa para validar los recorridos y se conserva por tiempo limitado.\n\n" +
-                        "Si no aceptas, puedes registrar traslados igual, sin ubicación."
+                        "Si no aceptas, puedes registrar traslados igual, sin ubicación.",
                 )
             },
             confirmButton = {
-                TextButton(onClick = { vm.responderConsentimiento(true); consentimientoOk = true }) { Text("Acepto") }
+                TextButton(onClick = { vm.responderConsentimiento(acepta = true); consentimientoOk = true }) { Text("Acepto") }
             },
             dismissButton = {
-                TextButton(onClick = { vm.responderConsentimiento(false); consentimientoOk = true }) { Text("No acepto") }
-            }
+                TextButton(onClick = { vm.responderConsentimiento(acepta = false); consentimientoOk = true }) { Text("No acepto") }
+            },
         )
     }
 
@@ -146,32 +152,31 @@ fun TecnicoScreen(vm: TecnicoViewModel, usuario: Usuario, alSalir: () -> Unit) {
             ),
             textoGuardar = "Iniciar",
             alCerrar = { mostrarInicio = false },
-            alGuardar = { v, cb ->
-                val error = when {
-                    v["vehiculo"].isNullOrBlank() -> "Selecciona el vehículo"
-                    v["origen"].isNullOrBlank() -> "Selecciona el origen"
-                    v["destino"].isNullOrBlank() -> "Selecciona el destino"
-                    v["km"].isNullOrBlank() -> "Ingresa el kilometraje de inicio"
-                    else -> null
-                }
-                if (error != null) {
-                    cb(error)
-                } else {
-                    val visitaId = visitaElegida?.id
-                    conUbicacion { loc ->
-                        vm.iniciar(
-                            v["vehiculo"]?.toLongOrNull(), v["origen"]?.toLongOrNull(),
-                            v["destino"]?.toLongOrNull(), visitaId, v["km"].orEmpty(), loc
-                        )
-                    }
-                    cb(null)
-                }
+        ) { v, cb ->
+            val error = when {
+                v["vehiculo"].isNullOrBlank() -> "Selecciona el vehículo"
+                v["origen"].isNullOrBlank() -> "Selecciona el origen"
+                v["destino"].isNullOrBlank() -> "Selecciona el destino"
+                v["km"].isNullOrBlank() -> "Ingresa el kilometraje de inicio"
+                else -> null
             }
-        )
+            if (error != null) {
+                cb(error)
+            } else {
+                val visitaId = visitaElegida?.id
+                conUbicacion { loc ->
+                    vm.iniciar(
+                        v["vehiculo"]?.toLongOrNull(), v["origen"]?.toLongOrNull(),
+                        v["destino"]?.toLongOrNull(), visitaId, v["km"].orEmpty(), loc
+                    )
+                }
+                cb(null)
+            }
+        }
     }
 
     val trasladoActivo = activo
-    if (mostrarParada && trasladoActivo != null) {
+    if (mostrarParada && (trasladoActivo != null)) {
         FormularioDialog(
             titulo = "Parada intermedia",
             campos = listOf(
@@ -181,46 +186,61 @@ fun TecnicoScreen(vm: TecnicoViewModel, usuario: Usuario, alSalir: () -> Unit) {
             ),
             inicial = emptyMap(),
             alCerrar = { mostrarParada = false },
-            alGuardar = { v, cb ->
-                when {
-                    v["centro"].isNullOrBlank() -> cb("Selecciona la clínica u hospital")
-                    v["km"].isNullOrBlank() -> cb("Ingresa el kilometraje")
-                    else -> {
-                        vm.agregarParada(trasladoActivo.id, v["centro"]?.toLongOrNull(), v["km"].orEmpty(), v["peajes"].orEmpty())
-                        cb(null)
-                    }
+        ) { v, cb ->
+            when {
+                v["centro"].isNullOrBlank() -> cb("Selecciona la clínica u hospital")
+                v["km"].isNullOrBlank() -> cb("Ingresa el kilometraje")
+                else -> {
+                    vm.agregarParada(trasladoActivo.id, v["centro"]?.toLongOrNull(), v["km"].orEmpty(), v["peajes"].orEmpty())
+                    cb(null)
                 }
             }
-        )
+        }
     }
 
     Scaffold(
         topBar = { BarraSuperior("TeqRuta · Técnico", usuario, alSalir) },
         snackbarHost = { SnackbarHost(snack) }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            TabRow(selectedTabIndex = tab) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Hoy") })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(if (activo != null) "Traslado ●" else "Traslado") })
-                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Historial") })
-            }
-            if (obteniendoUbicacion) Text("Obteniendo ubicación…", modifier = Modifier.padding(12.dp))
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            Column(Modifier.fillMaxSize()) {
+                TabRow(selectedTabIndex = tab) {
+                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Hoy") })
+                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(if (activo != null) "Traslado ●" else "Traslado") })
+                    Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Historial") })
+                }
+                if (obteniendoUbicacion) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text("Obteniendo ubicación GPS...", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
 
-            when (tab) {
-                0 -> TabHoy(
-                    visitas = visitas, cat = cat, hayActivo = activo != null, pendientes = pendientes,
-                    alSincronizar = vm::sincronizarAhora,
-                    alIniciar = { visita -> visitaElegida = visita; mostrarInicio = true }
-                )
-                1 -> TabTraslado(
-                    activo = activo, paradas = paradas, cat = cat,
-                    alAgregarParada = { mostrarParada = true },
-                    alFinalizar = { id, kmFin, peajes ->
-                        conUbicacion { loc -> vm.finalizar(id, kmFin, peajes, loc) }
-                    },
-                    alIniciarSinVisita = { visitaElegida = null; mostrarInicio = true }
-                )
-                else -> TabHistorial(historial = historial, cat = cat)
+                when (tab) {
+                    0 -> TabHoy(
+                        visitas = visitas, cat = cat, hayActivo = activo != null, pendientes = pendientes,
+                        sincronizando = sincronizando,
+                        alSincronizar = vm::sincronizarAhora,
+                        alIniciar = { visita -> visitaElegida = visita; mostrarInicio = true }
+                    )
+                    1 -> TabTraslado(
+                        activo = activo, paradas = paradas, cat = cat,
+                        alAgregarParada = { mostrarParada = true },
+                        alFinalizar = { id, kmFin, peajes ->
+                            conUbicacion { loc -> vm.finalizar(id, kmFin, peajes, loc) }
+                        },
+                        alIniciarSinVisita = { visitaElegida = null; mostrarInicio = true }
+                    )
+                    else -> TabHistorial(historial = historial, cat = cat)
+                }
+            }
+
+            if (cargando) {
+                CargandoOverlay("Procesando traslado...")
             }
         }
     }
@@ -232,6 +252,7 @@ private fun TabHoy(
     cat: Catalogo,
     hayActivo: Boolean,
     pendientes: Int,
+    sincronizando: Boolean,
     alSincronizar: () -> Unit,
     alIniciar: (Visita?) -> Unit
 ) {
@@ -241,13 +262,25 @@ private fun TabHoy(
                 Row(
                     Modifier.fillMaxWidth().padding(14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         if (pendientes == 0) "Todo sincronizado" else "Pendientes de sincronizar: $pendientes",
                         fontWeight = FontWeight.SemiBold
                     )
-                    OutlinedButton(onClick = alSincronizar) { Text("Sincronizar") }
+                    OutlinedButton(onClick = alSincronizar, enabled = !sincronizando) {
+                        if (sincronizando) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Text("Sincronizando...")
+                            }
+                        } else {
+                            Text("Sincronizar")
+                        }
+                    }
                 }
             }
         }

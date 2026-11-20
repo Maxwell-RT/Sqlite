@@ -14,8 +14,10 @@ import com.example.sqlite.data.Vehiculo
 import com.example.sqlite.data.Visita
 import com.example.sqlite.util.Fmt
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -38,11 +40,15 @@ class AdminViewModel(
     val bitacora: StateFlow<List<Bitacora>> = repo.bitacora.stateIn(viewModelScope, compartir, emptyList())
     val umbral: StateFlow<String> = repo.umbral.map { it ?: "10" }.stateIn(viewModelScope, compartir, "10")
 
+    private val _cargando = MutableStateFlow(value = false)
+    val cargando: StateFlow<Boolean> = _cargando.asStateFlow()
+
     private fun actor(): Long? = auth.usuario.value?.id
 
     /** Ejecuta la operación y avisa al formulario: null = éxito, texto = mensaje de error. */
     private fun ejecutar(alTerminar: (String?) -> Unit, bloque: suspend () -> Unit) {
         viewModelScope.launch {
+            _cargando.value = true
             try {
                 bloque()
                 alTerminar(null)
@@ -50,6 +56,8 @@ class AdminViewModel(
                 throw e
             } catch (e: Exception) {
                 alTerminar(e.message ?: "Ocurrió un error")
+            } finally {
+                _cargando.value = false
             }
         }
     }

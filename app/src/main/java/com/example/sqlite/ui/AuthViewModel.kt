@@ -13,15 +13,23 @@ class AuthViewModel(private val auth: AuthRepository) : ViewModel() {
     val usuario = auth.usuario
     val iniciando = auth.iniciando
 
+    private val _cargando = MutableStateFlow(value = false)
+    val cargando: StateFlow<Boolean> = _cargando.asStateFlow()
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
     fun ingresar(username: String, password: String) {
         viewModelScope.launch {
-            _error.value = if (username.isBlank() || password.isEmpty()) {
-                "Ingresa usuario y contraseña"
-            } else {
-                auth.ingresar(username, password)
+            _cargando.value = true
+            try {
+                _error.value = if (username.isBlank() || password.isEmpty()) {
+                    "Ingresa usuario y contraseña"
+                } else {
+                    auth.ingresar(username, password)
+                }
+            } finally {
+                _cargando.value = false
             }
         }
     }

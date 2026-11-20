@@ -37,6 +37,7 @@ import com.example.sqlite.data.EstadoTraslado
 import com.example.sqlite.data.Traslado
 import com.example.sqlite.data.Usuario
 import com.example.sqlite.ui.JefeViewModel
+import androidx.compose.foundation.layout.Box
 import com.example.sqlite.util.Fmt
 
 /** Pantalla del jefe de servicio técnico (RF-10, RF-11, RF-12). */
@@ -51,6 +52,7 @@ fun JefeScreen(vm: JefeViewModel, usuario: Usuario, alSalir: () -> Unit) {
     val estadoFiltro by vm.estadoFiltro.collectAsState()
     val soloDesviados by vm.soloDesviados.collectAsState()
     val mensaje by vm.mensaje.collectAsState()
+    val cargando by vm.cargando.collectAsState()
 
     val snack = remember { SnackbarHostState() }
     var seleccionadoId by remember { mutableStateOf<Long?>(null) }
@@ -62,11 +64,10 @@ fun JefeScreen(vm: JefeViewModel, usuario: Usuario, alSalir: () -> Unit) {
     }
 
     // Se busca por id para que el detalle se actualice si el traslado cambia.
-    val seleccionado = traslados.firstOrNull { it.id == seleccionadoId }
-    if (seleccionado != null) {
+    traslados.firstOrNull { it.id == seleccionadoId }?.let { seleccionado ->
         DetalleTraslado(
             vm = vm, t = seleccionado, cat = cat,
-            alCerrar = { seleccionadoId = null }
+            alCerrar = { seleccionadoId = null },
         )
     }
 
@@ -74,36 +75,42 @@ fun JefeScreen(vm: JefeViewModel, usuario: Usuario, alSalir: () -> Unit) {
         topBar = { BarraSuperior("TeqRuta · Jefe de servicio", usuario, alSalir) },
         snackbarHost = { SnackbarHost(snack) }
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding)) {
-            item {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Desplegable(
-                        etiqueta = "Técnico", opciones = tecnicos.map { it.id to it.nombre },
-                        seleccion = tecnicoFiltro, alElegir = { vm.tecnicoFiltro.value = it },
-                        textoNinguno = "Todos"
-                    )
-                    OutlinedTextField(
-                        value = fechaFiltro, onValueChange = { vm.fechaFiltro.value = it },
-                        label = { Text("Fecha (AAAA-MM-DD, puede ser parcial)") },
-                        singleLine = true, modifier = Modifier.fillMaxWidth()
-                    )
-                    Desplegable(
-                        etiqueta = "Estado", opciones = EstadoTraslado.filtrables,
-                        seleccion = estadoFiltro, alElegir = { vm.estadoFiltro.value = it },
-                        textoNinguno = "Todos"
-                    )
-                    FilterChip(
-                        selected = soloDesviados, onClick = { vm.soloDesviados.value = !soloDesviados },
-                        label = { Text("Solo con desviación de distancia") }
-                    )
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            LazyColumn(Modifier.fillMaxSize()) {
+                item {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Desplegable(
+                            etiqueta = "Técnico", opciones = tecnicos.map { it.id to it.nombre },
+                            seleccion = tecnicoFiltro, alElegir = { vm.tecnicoFiltro.value = it },
+                            textoNinguno = "Todos"
+                        )
+                        OutlinedTextField(
+                            value = fechaFiltro, onValueChange = { vm.fechaFiltro.value = it },
+                            label = { Text("Fecha (AAAA-MM-DD, puede ser parcial)") },
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
+                        )
+                        Desplegable(
+                            etiqueta = "Estado", opciones = EstadoTraslado.filtrables,
+                            seleccion = estadoFiltro, alElegir = { vm.estadoFiltro.value = it },
+                            textoNinguno = "Todos"
+                        )
+                        FilterChip(
+                            selected = soloDesviados, onClick = { vm.soloDesviados.value = !soloDesviados },
+                            label = { Text("Solo con desviación de distancia") }
+                        )
+                    }
+                }
+                item { Titulo("Traslados (${traslados.size})") }
+                if (traslados.isEmpty()) item { Vacio("No hay traslados con esos filtros.") }
+                items(traslados, key = { it.id }) { t ->
+                    TrasladoCard(t = t, cat = cat, mostrarTecnico = true, alTocar = { seleccionadoId = t.id }) {
+                        Text("Costo: ${Fmt.dinero(t.costoTotal)}", style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
-            item { Titulo("Traslados (${traslados.size})") }
-            if (traslados.isEmpty()) item { Vacio("No hay traslados con esos filtros.") }
-            items(traslados, key = { it.id }) { t ->
-                TrasladoCard(t = t, cat = cat, mostrarTecnico = true, alTocar = { seleccionadoId = t.id }) {
-                    Text("Costo: ${Fmt.dinero(t.costoTotal)}", style = MaterialTheme.typography.bodyMedium)
-                }
+
+            if (cargando) {
+                CargandoOverlay("Actualizando traslado...")
             }
         }
     }
@@ -137,8 +144,8 @@ private fun DetalleTraslado(vm: JefeViewModel, t: Traslado, cat: com.example.sql
                     if (t.latIni != null) "Ubicación de inicio: ${"%.5f".format(java.util.Locale.US, t.latIni)}, ${"%.5f".format(java.util.Locale.US, t.lonIni)}"
                     else "Sin ubicación de inicio"
                 )
-                if (t.revisadoTs != null) {
-                    Text("Revisado por ${t.revisadoPor?.let { cat.usuario(it) } ?: "—"} el ${Fmt.fechaHora(t.revisadoTs)}")
+                t.revisadoTs?.let { revisado ->
+                    Text("Revisado por ${t.revisadoPor?.let { cat.usuario(it) } ?: "—"} el ${Fmt.fechaHora(revisado)}")
                 }
                 if (!sincronizado) {
                     Text("Aún no se sincroniza: no se puede revisar hasta tener costo y desviación.", color = MaterialTheme.colorScheme.error)

@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Box
 import com.example.sqlite.data.Rol
 import com.example.sqlite.data.TipoTarifa
 import com.example.sqlite.data.TipoVehiculo
@@ -46,22 +47,30 @@ private val SECCIONES = listOf("Técnicos", "Vehículos", "Centros", "Tramos", "
 @Composable
 fun AdminScreen(vm: AdminViewModel, usuario: Usuario, alSalir: () -> Unit) {
     var tab by remember { mutableIntStateOf(0) }
+    val cargando by vm.cargando.collectAsState()
+
     Scaffold(topBar = { BarraSuperior("TeqRuta · Administración", usuario, alSalir) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            ScrollableTabRow(selectedTabIndex = tab, edgePadding = 0.dp) {
-                SECCIONES.forEachIndexed { i, nombre ->
-                    Tab(selected = tab == i, onClick = { tab = i }, text = { Text(nombre) })
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            Column(Modifier.fillMaxSize()) {
+                ScrollableTabRow(selectedTabIndex = tab, edgePadding = 0.dp) {
+                    SECCIONES.forEachIndexed { i, nombre ->
+                        Tab(selected = tab == i, onClick = { tab = i }, text = { Text(nombre) })
+                    }
+                }
+                when (tab) {
+                    0 -> TabUsuarios(vm)
+                    1 -> TabVehiculos(vm)
+                    2 -> TabCentros(vm)
+                    3 -> TabTramos(vm)
+                    4 -> TabTarifas(vm)
+                    5 -> TabVisitas(vm)
+                    6 -> TabParametros(vm)
+                    else -> TabBitacora(vm)
                 }
             }
-            when (tab) {
-                0 -> TabUsuarios(vm)
-                1 -> TabVehiculos(vm)
-                2 -> TabCentros(vm)
-                3 -> TabTramos(vm)
-                4 -> TabTarifas(vm)
-                5 -> TabVisitas(vm)
-                6 -> TabParametros(vm)
-                else -> TabBitacora(vm)
+
+            if (cargando) {
+                CargandoOverlay("Guardando cambios...")
             }
         }
     }
@@ -80,21 +89,20 @@ private fun <T> Mantenedor(
     inicial: (T?) -> Map<String, String>,
     guardar: (T?, Map<String, String>, (String?) -> Unit) -> Unit,
     cambiarActivo: ((T, (String?) -> Unit) -> Unit)? = null,
-    permitirEditar: Boolean = true
+    permitirEditar: Boolean = true,
 ) {
     var editando by remember { mutableStateOf<T?>(null) }
-    var creando by remember { mutableStateOf(false) }
+    var creando by remember { mutableStateOf(value = false) }
     var aviso by remember { mutableStateOf<String?>(null) }
 
-    if (creando || editando != null) {
+    if (creando || (editando != null)) {
         val actual = editando
         FormularioDialog(
             titulo = if (actual == null) "Nuevo $entidad" else "Editar $entidad",
             campos = campos,
             inicial = inicial(actual),
             alCerrar = { creando = false; editando = null },
-            alGuardar = { v, cb -> guardar(actual, v, cb) }
-        )
+        ) { v, cb -> guardar(actual, v, cb) }
     }
     aviso?.let {
         AlertDialog(
@@ -120,7 +128,7 @@ private fun <T> Mantenedor(
                     Text(detalle(item), style = MaterialTheme.typography.bodyMedium)
                     Row {
                         if (permitirEditar) TextButton(onClick = { editando = item }) { Text("Editar") }
-                        if (cambiarActivo != null && estaActivo != null) {
+                        if ((cambiarActivo != null) && (estaActivo != null)) {
                             TextButton(onClick = { cambiarActivo(item) { e -> aviso = e } }) {
                                 Text(if (estaActivo) "Desactivar" else "Activar")
                             }

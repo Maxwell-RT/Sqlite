@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,32 +33,51 @@ import com.example.sqlite.ui.AuthViewModel
 @Composable
 fun LoginScreen(vm: AuthViewModel) {
     val error by vm.error.collectAsState()
+    val cargando by vm.cargando.collectAsState()
     var usuario by remember { mutableStateOf("") }
     var clave by remember { mutableStateOf("") }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text("TeqRuta", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
         Text("Traslados en terreno · TEQMED SpA", style = MaterialTheme.typography.bodyLarge)
 
         OutlinedTextField(
             value = usuario, onValueChange = { usuario = it; vm.limpiarError() },
-            label = { Text("Usuario") }, singleLine = true, modifier = Modifier.fillMaxWidth()
+            label = { Text("Usuario") }, singleLine = true, enabled = !cargando, modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = clave, onValueChange = { clave = it; vm.limpiarError() },
-            label = { Text("Contraseña") }, singleLine = true,
+            label = { Text("Contraseña") }, singleLine = true, enabled = !cargando,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-        Button(onClick = { vm.ingresar(usuario, clave) }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text("Ingresar", style = MaterialTheme.typography.titleMedium)
+        Button(
+            onClick = { vm.ingresar(usuario, clave) },
+            enabled = !cargando,
+            modifier = Modifier.fillMaxWidth().height(56.dp)
+        ) {
+            if (cargando) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.5.dp
+                    )
+                    Text("Ingresando...", style = MaterialTheme.typography.titleMedium)
+                }
+            } else {
+                Text("Ingresar", style = MaterialTheme.typography.titleMedium)
+            }
         }
 
         Text(

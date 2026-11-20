@@ -32,7 +32,7 @@ class TecnicoViewModel(
     private val auth: AuthRepository,
     private val repo: TrasladoRepository,
     admin: AdminRepository,
-    private val sync: SyncManager
+    private val sync: SyncManager,
 ) : ViewModel() {
 
     private val compartir = SharingStarted.WhileSubscribed(5_000)
@@ -65,6 +65,12 @@ class TecnicoViewModel(
     private val _mensaje = MutableStateFlow<String?>(null)
     val mensaje: StateFlow<String?> = _mensaje.asStateFlow()
 
+    private val _sincronizando = MutableStateFlow(value = false)
+    val sincronizando: StateFlow<Boolean> = _sincronizando.asStateFlow()
+
+    private val _cargando = MutableStateFlow(value = false)
+    val cargando: StateFlow<Boolean> = _cargando.asStateFlow()
+
     fun limpiarMensaje() {
         _mensaje.value = null
     }
@@ -81,13 +87,16 @@ class TecnicoViewModel(
 
     private fun ejecutar(exito: String? = null, bloque: suspend () -> Unit) {
         viewModelScope.launch {
+            _cargando.value = true
             try {
                 bloque()
-                if (exito != null) _mensaje.value = exito
+                exito?.let { _mensaje.value = it }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _mensaje.value = e.message ?: "Ocurrió un error"
+            } finally {
+                _cargando.value = false
             }
         }
     }
@@ -100,7 +109,7 @@ class TecnicoViewModel(
 
     fun iniciar(
         vehiculoId: Long?, origenId: Long?, destinoId: Long?, visitaId: Long?,
-        kmInicio: String, ubicacion: Pair<Double, Double>?
+        kmInicio: String, ubicacion: Pair<Double, Double>?,
     ) = ejecutar("Traslado iniciado") {
         repo.iniciar(uid(), vehiculoId, origenId, destinoId, visitaId, entero(kmInicio, "Kilometraje"), ubicacion)
     }
@@ -117,6 +126,13 @@ class TecnicoViewModel(
         }
 
     fun sincronizarAhora() {
-        viewModelScope.launch { _mensaje.value = sync.sincronizarAhora() }
+        viewModelScope.launch {
+            _sincronizando.value = true
+            try {
+                _mensaje.value = sync.sincronizarAhora()
+            } finally {
+                _sincronizando.value = false
+            }
+        }
     }
 }

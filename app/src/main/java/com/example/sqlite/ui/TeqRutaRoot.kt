@@ -2,7 +2,6 @@ package com.example.sqlite.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,6 +13,8 @@ import com.example.sqlite.ui.screen.GerenciaScreen
 import com.example.sqlite.ui.screen.JefeScreen
 import com.example.sqlite.ui.screen.LoginScreen
 import com.example.sqlite.ui.screen.TecnicoScreen
+
+import com.example.sqlite.ui.screen.IndicadorCarga
 
 /** Cada perfil ve solo su propia pantalla (RF-02). */
 @Composable
@@ -29,7 +30,9 @@ fun TeqRutaRoot(
     val u = usuario
 
     when {
-        iniciando -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        iniciando -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            IndicadorCarga(texto = "Iniciando aplicación...")
+        }
         u == null -> LoginScreen(auth)
         else -> {
             val salir = { auth.salir() }

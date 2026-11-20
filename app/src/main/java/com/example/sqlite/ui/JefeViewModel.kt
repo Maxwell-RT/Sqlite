@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 class JefeViewModel(
     private val auth: AuthRepository,
     private val repo: TrasladoRepository,
-    admin: AdminRepository
+    admin: AdminRepository,
 ) : ViewModel() {
 
     private data class Filtros(val tecnico: Long?, val fecha: String, val estado: String?, val soloDesviados: Boolean)
@@ -41,7 +41,7 @@ class JefeViewModel(
     val tecnicoFiltro = MutableStateFlow<Long?>(null)
     val fechaFiltro = MutableStateFlow("")
     val estadoFiltro = MutableStateFlow<String?>(null)
-    val soloDesviados = MutableStateFlow(false)
+    val soloDesviados = MutableStateFlow(value = false)
 
     private val filtros = combine(tecnicoFiltro, fechaFiltro, estadoFiltro, soloDesviados) { t, f, e, d ->
         Filtros(t, f.trim(), e, d)
@@ -50,15 +50,18 @@ class JefeViewModel(
     val traslados: StateFlow<List<Traslado>> =
         combine(repo.todosCerrados(), filtros) { lista, f ->
             lista.filter { t ->
-                (f.tecnico == null || t.tecnicoId == f.tecnico) &&
+                ((f.tecnico == null) || (t.tecnicoId == f.tecnico)) &&
                     (f.fecha.isEmpty() || Fmt.fecha(t.inicioTs).startsWith(f.fecha)) &&
-                    (f.estado == null || t.estado == f.estado) &&
+                    ((f.estado == null) || (t.estado == f.estado)) &&
                     (!f.soloDesviados || t.desviado)
             }
         }.stateIn(viewModelScope, compartir, emptyList())
 
     private val _mensaje = MutableStateFlow<String?>(null)
     val mensaje: StateFlow<String?> = _mensaje.asStateFlow()
+
+    private val _cargando = MutableStateFlow(value = false)
+    val cargando: StateFlow<Boolean> = _cargando.asStateFlow()
 
     fun limpiarMensaje() {
         _mensaje.value = null
@@ -68,6 +71,7 @@ class JefeViewModel(
 
     fun revisar(trasladoId: Long, estado: String, comentario: String, alTerminar: () -> Unit) {
         viewModelScope.launch {
+            _cargando.value = true
             try {
                 val jefeId = auth.usuario.value?.id ?: error("Sin sesión")
                 repo.revisar(trasladoId, jefeId, estado, comentario)
@@ -77,6 +81,8 @@ class JefeViewModel(
                 throw e
             } catch (e: Exception) {
                 _mensaje.value = e.message ?: "Ocurrió un error"
+            } finally {
+                _cargando.value = false
             }
         }
     }
