@@ -50,11 +50,11 @@ import com.example.sqlite.data.Traslado
 import com.example.sqlite.data.Usuario
 import com.example.sqlite.util.Fmt
 
-private val Verde = Color(0xFF2E7D32)
-private val Ambar = Color(0xFFB26A00)
-private val Rojo = Color(0xFFC62828)
-private val Gris = Color(0xFF546E7A)
-private val Azul = Color(0xFF1565C0)
+private val Verde = Color(0xFF00FF66) // Neon Green
+private val Ambar = Color(0xFFFFB700) // Neon Amber
+private val Rojo = Color(0xFFFF3366) // Neon Red
+private val Gris = Color(0xFFB0BEC5) // Light Slate Grey
+private val Azul = Color(0xFF00FFFF) // Electric Cyan
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,13 +76,13 @@ fun BarraSuperior(titulo: String, usuario: Usuario, alSalir: () -> Unit) {
 
 @Composable
 fun Etiqueta(texto: String, color: Color) {
-    Surface(color = color.copy(alpha = 0.14f), shape = RoundedCornerShape(50)) {
+    Surface(color = color.copy(alpha = 0.22f), shape = RoundedCornerShape(50)) {
         Text(
             text = texto,
             color = color,
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
 }

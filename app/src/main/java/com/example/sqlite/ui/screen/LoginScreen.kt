@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,24 +40,61 @@ fun LoginScreen(vm: AuthViewModel) {
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("TeqRuta", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-        Text("Traslados en terreno · TEQMED SpA", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            "TeqRuta",
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            "Traslados en terreno · TEQMED SpA",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.Medium
+        )
 
         OutlinedTextField(
-            value = usuario, onValueChange = { usuario = it; vm.limpiarError() },
-            label = { Text("Usuario") }, singleLine = true, enabled = !cargando, modifier = Modifier.fillMaxWidth(),
+            value = usuario,
+            onValueChange = { usuario = it; vm.limpiarError() },
+            label = { Text("Usuario") },
+            singleLine = true,
+            enabled = !cargando,
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         )
         OutlinedTextField(
-            value = clave, onValueChange = { clave = it; vm.limpiarError() },
-            label = { Text("Contraseña") }, singleLine = true, enabled = !cargando,
+            value = clave,
+            onValueChange = { clave = it; vm.limpiarError() },
+            label = { Text("Contraseña") },
+            singleLine = true,
+            enabled = !cargando,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         )
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
 
         Button(
             onClick = { vm.ingresar(usuario, clave) },
@@ -82,7 +120,8 @@ fun LoginScreen(vm: AuthViewModel) {
 
         Text(
             "Demo (clave 1234): tecnico1, tecnico2, jefe, gerencia, admin",
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

@@ -293,7 +293,7 @@ private fun TabHoy(
                     Text("${cat.cliente(v.centroId)} · contrato ${cat.contrato(v.centroId)}", style = MaterialTheme.typography.bodyMedium)
                     if (v.descripcion.isNotBlank()) Text(v.descripcion, style = MaterialTheme.typography.bodyMedium)
                     if (v.atendida) {
-                        Etiqueta("Atendida", androidx.compose.ui.graphics.Color(0xFF2E7D32))
+                        Etiqueta("Atendida", androidx.compose.ui.graphics.Color(0xFF00FF66))
                     } else {
                         Button(
                             onClick = { alIniciar(v) }, enabled = !hayActivo,
